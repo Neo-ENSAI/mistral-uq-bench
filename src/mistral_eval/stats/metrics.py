@@ -1,11 +1,11 @@
+
 import numpy as np
 from scipy.special import logsumexp
-from typing import Dict
-
 
 CHOICES = ("A", "B", "C", "D")
 
-def extract_choice_probabilities(top_logprobs: Dict[str, float]) -> Dict[str, float]:
+
+def extract_choice_probabilities(top_logprobs: dict[str, float]) -> dict[str, float]:
     """
     Extract normalized probabilities for the choices A, B, C, D from the top_logprobs
     dictionary with logsumexp normalization
@@ -13,10 +13,7 @@ def extract_choice_probabilities(top_logprobs: Dict[str, float]) -> Dict[str, fl
 
     raw_logprobs = []
     for letter in CHOICES:
-        candidates = [
-            v for k, v in top_logprobs.items()
-            if k.strip().upper() == letter
-        ]
+        candidates = [v for k, v in top_logprobs.items() if k.strip().upper() == letter]
         if candidates:
             raw_logprobs.append(float(logsumexp(candidates)))
         else:
@@ -29,7 +26,7 @@ def extract_choice_probabilities(top_logprobs: Dict[str, float]) -> Dict[str, fl
     return {letter: float(probs[i]) for i, letter in enumerate(CHOICES)}
 
 
-def compute_predictive_entropy(choice_probs: Dict[str, float]) -> float:
+def compute_predictive_entropy(choice_probs: dict[str, float]) -> float:
     """
     Compute the Shannon entropy of the choice probability distribution
     """
@@ -37,11 +34,15 @@ def compute_predictive_entropy(choice_probs: Dict[str, float]) -> float:
     p = np.array([choice_probs[c] for c in CHOICES], dtype=np.float64)
     p = np.clip(p, 1e-12, 1.0)
     p = p / p.sum()
-    
+
     return float(-np.sum(p * np.log(p)))
 
 
-def compute_ece(confidences: np.ndarray, accuracies: np.ndarray, n_bins: int = 10,) -> float:
+def compute_ece(
+    confidences: np.ndarray,
+    accuracies: np.ndarray,
+    n_bins: int = 10,
+) -> float:
     """
     Compute the Expected Calibration Error (ECE) over M equidistant bins in [0, 1].
     - confidences: array (n,) of predicted max probabilities max_y p(y|x_i)
@@ -69,7 +70,9 @@ def compute_ece(confidences: np.ndarray, accuracies: np.ndarray, n_bins: int = 1
     return float(ece)
 
 
-def compute_multiclass_brier_score(prob_matrix: np.ndarray, true_indices: np.ndarray) -> float:
+def compute_multiclass_brier_score(
+    prob_matrix: np.ndarray, true_indices: np.ndarray
+) -> float:
     """
     Compute the multiclass Brier score: 1/n sum_i sum_k (p_{i,k} - 1_{y_i = k})^2.
     """

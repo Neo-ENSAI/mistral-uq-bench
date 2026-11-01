@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict
+
 from mistral_eval.schemas import InferenceResult
 
 
@@ -14,9 +14,8 @@ class BaseInferenceEngine(ABC):
 
     @abstractmethod
     async def generate_batch(
-        self, prompts: List[Dict[str, str]]
-    ) -> List[InferenceResult]:
+        self, prompts: list[dict[str, str]]
+    ) -> list[InferenceResult]:
         """
         Process a batch of prompts [{'id': ..., 'prompt': ...}] and retrieve token logprobs
         """
-        pass

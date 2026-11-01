@@ -1,6 +1,6 @@
 import math
+
 import numpy as np
-from typing import List, Dict
 
 CHOICES = ["A", "B", "C", "D"]
 
@@ -20,7 +20,7 @@ class SplitConformalCalibrator:
         self.method = method
         self.q_hat: float | None = None
 
-    def fit(self, cal_probs: List[Dict[str, float]], cal_targets: List[str]) -> float:
+    def fit(self, cal_probs: list[dict[str, float]], cal_targets: list[str]) -> float:
         """
         Calibrate the corrected empirical quantile q_hat on the calibration set.
         """
@@ -44,7 +44,7 @@ class SplitConformalCalibrator:
         return self.q_hat
 
     @staticmethod
-    def _aps_score(probs: Dict[str, float], target: str) -> float:
+    def _aps_score(probs: dict[str, float], target: str) -> float:
         """
         Adaptive Prediction Sets
         """
@@ -58,7 +58,7 @@ class SplitConformalCalibrator:
 
         return cum_prob
 
-    def predict_sets(self, test_probs: List[Dict[str, float]]) -> List[List[str]]:
+    def predict_sets(self, test_probs: list[dict[str, float]]) -> list[list[str]]:
         """
         COnstruct the prediction set C(X) for each test example.
         """
@@ -66,18 +66,12 @@ class SplitConformalCalibrator:
         if self.q_hat is None:
             raise RuntimeError("Call .fit() before .predict_sets().")
 
-        prediction_sets: List[List[str]] = []
+        prediction_sets: list[list[str]] = []
         for probs in test_probs:
             if self.method == "lac":
-                c_set = [
-                    y for y in CHOICES
-                    if (1.0 - float(probs[y])) <= self.q_hat
-                ]
+                c_set = [y for y in CHOICES if (1.0 - float(probs[y])) <= self.q_hat]
             else:
-                c_set = [
-                    y for y in CHOICES
-                    if self._aps_score(probs, y) <= self.q_hat
-                ]
+                c_set = [y for y in CHOICES if self._aps_score(probs, y) <= self.q_hat]
             if not c_set:
                 best_y = max(probs, key=probs.get)
                 c_set = [best_y]
@@ -86,12 +80,14 @@ class SplitConformalCalibrator:
         return prediction_sets
 
 
-def evaluate_conformal_sets(prediction_sets: List[List[str]], test_targets: List[str]) -> Dict[str, float]:
+def evaluate_conformal_sets(
+    prediction_sets: list[list[str]], test_targets: list[str]
+) -> dict[str, float]:
 
     covered = [y in c_set for c_set, y in zip(prediction_sets, test_targets)]
     sizes = [len(c_set) for c_set in prediction_sets]
     singleton_rate = [1.0 if len(c_set) == 1 else 0.0 for c_set in prediction_sets]
-    
+
     return {
         "empirical_coverage": float(np.mean(covered)),
         "mean_set_size": float(np.mean(sizes)),

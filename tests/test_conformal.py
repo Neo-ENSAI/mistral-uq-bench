@@ -1,9 +1,14 @@
 import numpy as np
-from mistral_eval.stats.conformal import SplitConformalCalibrator, evaluate_conformal_sets, CHOICES
+
+from mistral_eval.stats.conformal import (
+    CHOICES,
+    SplitConformalCalibrator,
+    evaluate_conformal_sets,
+)
 
 
 def test_split_conformal_guarantee_monte_carlo():
-    
+
     rng = np.random.default_rng(12345)
     alpha = 0.10
     coverages = []
@@ -13,12 +18,9 @@ def test_split_conformal_guarantee_monte_carlo():
         exp_l = np.exp(logits)
         probs_mat = exp_l / exp_l.sum(axis=1, keepdims=True)
 
-        targets = [
-            CHOICES[rng.choice(4, p=probs_mat[i])] for i in range(400)
-        ]
+        targets = [CHOICES[rng.choice(4, p=probs_mat[i])] for i in range(400)]
         probs_dicts = [
-            {CHOICES[k]: float(probs_mat[i, k]) for k in range(4)}
-            for i in range(400)
+            {CHOICES[k]: float(probs_mat[i, k]) for k in range(4)} for i in range(400)
         ]
 
         cal = SplitConformalCalibrator(alpha=alpha, method="lac")

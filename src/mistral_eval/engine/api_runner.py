@@ -1,18 +1,17 @@
-import os
-import time
 import asyncio
-import random
 import json
-from typing import List, Dict, Optional
-from dotenv import load_dotenv
+import os
+import random
+import time
 
+from dotenv import load_dotenv
 from mistralai.client import Mistral
 
 from mistral_eval.engine.base import BaseInferenceEngine
 from mistral_eval.schemas import InferenceResult, TokenLogprob
 from mistral_eval.stats.metrics import (
-    extract_choice_probabilities,
     compute_predictive_entropy,
+    extract_choice_probabilities,
 )
 
 
@@ -24,7 +23,7 @@ class MistralAPIEngine(BaseInferenceEngine):
         max_concurrency: int = 4,
         max_retries: int = 10,
         top_logprobs: int = 20,
-        cache_path: Optional[str] = None,
+        cache_path: str | None = None,
         request_timeout: int = 60,
     ):
         super().__init__(model_name=model_name, temperature=temperature)
@@ -38,7 +37,7 @@ class MistralAPIEngine(BaseInferenceEngine):
         self.max_retries = max_retries
         self.top_logprobs = top_logprobs
         self.cache_path = cache_path
-        self._cache: Dict[str, Dict] = {}
+        self._cache: dict[str, dict] = {}
         if cache_path and os.path.exists(cache_path):
             with open(cache_path, encoding="utf-8") as f:
                 for line in f:
@@ -49,12 +48,15 @@ class MistralAPIEngine(BaseInferenceEngine):
     @staticmethod
     def _cache_key(model: str, prompt: str, temperature: float) -> str:
         import hashlib
+
         return hashlib.sha1(f"{model}|{temperature}|{prompt}".encode()).hexdigest()
 
-    def _cache_load(self, item: Dict[str, str]) -> Optional[Dict]:
-        return self._cache.get(self._cache_key(self.model_name, item["prompt"], self.temperature))
+    def _cache_load(self, item: dict[str, str]) -> dict | None:
+        return self._cache.get(
+            self._cache_key(self.model_name, item["prompt"], self.temperature)
+        )
 
-    def _cache_save(self, item: Dict[str, str], record: Dict):
+    def _cache_save(self, item: dict[str, str], record: dict):
         key = self._cache_key(self.model_name, item["prompt"], self.temperature)
         self._cache[key] = record
         if self.cache_path:
@@ -93,7 +95,7 @@ class MistralAPIEngine(BaseInferenceEngine):
                 return
             await asyncio.sleep(wait)
 
-    async def _call_with_retry(self, item: Dict[str, str]):
+    async def _call_with_retry(self, item: dict[str, str]):
         delay = 2.0
         for attempt in range(self.max_retries):
             await self._wait_for_pause()
@@ -114,18 +116,19 @@ class MistralAPIEngine(BaseInferenceEngine):
                 self._pause_until = max(self._pause_until, time.monotonic() + wait)
                 delay = min(delay * 2.0, 60.0)
 
-
-    def _build_result(self, item: Dict[str, str], record: Dict) -> InferenceResult:
+    def _build_result(self, item: dict[str, str], record: dict) -> InferenceResult:
         """
         Constructs the InferenceResult from a record (cache or API)
         """
         content = record["raw_text"]
-        first_token_top_logprobs: Dict[str, float] = record["first_token_top_logprobs"]
+        first_token_top_logprobs: dict[str, float] = record["first_token_top_logprobs"]
         tokens_data = [TokenLogprob(**t) for t in record["tokens"]]
 
         choice_probs = extract_choice_probabilities(first_token_top_logprobs)
         predictive_entropy = compute_predictive_entropy(choice_probs)
-        predicted_choice = max(choice_probs, key=choice_probs.get) if choice_probs else ""
+        predicted_choice = (
+            max(choice_probs, key=choice_probs.get) if choice_probs else ""
+        )
 
         if not first_token_top_logprobs:
             print(f"[warn] top_logprobs empty (prompt {item['id']})")
@@ -143,7 +146,7 @@ class MistralAPIEngine(BaseInferenceEngine):
             throughput_tok_per_sec=record["throughput_tok_per_sec"],
         )
 
-    async def _call_single(self, item: Dict[str, str]) -> InferenceResult:
+    async def _call_single(self, item: dict[str, str]) -> InferenceResult:
         cached = self._cache_load(item)
         if cached is not None:
             return self._build_result(item, cached)
@@ -156,11 +159,15 @@ class MistralAPIEngine(BaseInferenceEngine):
             choice_obj = response.choices[0]
             content = choice_obj.message.content or ""
             usage = getattr(response, "usage", None)
-            comp_tokens = max(usage.completion_tokens, 1) if (usage and getattr(usage, "completion_tokens", None)) else 1
+            comp_tokens = (
+                max(usage.completion_tokens, 1)
+                if (usage and getattr(usage, "completion_tokens", None))
+                else 1
+            )
             throughput = comp_tokens / max(latency_ms / 1000.0, 0.001)
 
-            first_token_top_logprobs: Dict[str, float] = {}
-            tokens_data: List[TokenLogprob] = []
+            first_token_top_logprobs: dict[str, float] = {}
+            tokens_data: list[TokenLogprob] = []
 
             if choice_obj.logprobs and choice_obj.logprobs.content:
                 for idx, logprob_item in enumerate(choice_obj.logprobs.content):
@@ -182,7 +189,11 @@ class MistralAPIEngine(BaseInferenceEngine):
                 "raw_text": content,
                 "first_token_top_logprobs": first_token_top_logprobs,
                 "tokens": [
-                    {"token": t.token, "logprob": t.logprob, "top_logprobs": t.top_logprobs}
+                    {
+                        "token": t.token,
+                        "logprob": t.logprob,
+                        "top_logprobs": t.top_logprobs,
+                    }
                     for t in tokens_data
                 ],
                 "latency_ms": latency_ms,
@@ -191,7 +202,9 @@ class MistralAPIEngine(BaseInferenceEngine):
             self._cache_save(item, record)
             return self._build_result(item, record)
 
-    async def generate_batch(self, prompts: List[Dict[str, str]]) -> List[InferenceResult]:
+    async def generate_batch(
+        self, prompts: list[dict[str, str]]
+    ) -> list[InferenceResult]:
         tasks = [self._call_single(p) for p in prompts]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         failed = [r for r in results if isinstance(r, Exception)]

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from mistral_eval.stats.testing import SequentialTestResult
 
 
@@ -27,7 +28,6 @@ def evaluate_reliability_gate(
 
     target_cov = 1.0 - alpha
     if seq_result.regression_detected:
-
         return ReliabilityGateReport(
             passed=False,
             empirical_coverage=empirical_coverage,
@@ -39,7 +39,6 @@ def evaluate_reliability_gate(
         )
 
     if mean_set_size > max_allowed_set_size:
-
         return ReliabilityGateReport(
             passed=False,
             empirical_coverage=empirical_coverage,

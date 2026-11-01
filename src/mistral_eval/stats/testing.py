@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass
@@ -9,7 +8,7 @@ class SequentialTestResult:
     final_martingale_value: float
     threshold: float
     empirical_error_rate: float
-    trajectory: List[float]
+    trajectory: list[float]
 
 
 class CoverageMartingaleTester:
@@ -32,7 +31,7 @@ class CoverageMartingaleTester:
         self.delta = type1_error_delta
         self.threshold = 1.0 / type1_error_delta
 
-    def run_stream(self, is_covered_stream: List[bool]) -> SequentialTestResult:
+    def run_stream(self, is_covered_stream: list[bool]) -> SequentialTestResult:
         m_t = 1.0
         trajectory = [1.0]
         stopped_step = len(is_covered_stream)
@@ -56,7 +55,7 @@ class CoverageMartingaleTester:
                 break
 
         err_rate = errors / max(stopped_step, 1)
-        
+
         return SequentialTestResult(
             regression_detected=detected,
             stopped_at_step=stopped_step,

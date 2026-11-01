@@ -1,20 +1,22 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from mistral_eval.engine.api_runner import MistralAPIEngine
 from mistral_eval.schemas import InferenceResult
+
 
 @pytest.mark.asyncio
 async def test_mistral_api_engine_batch_contract():
 
     mock_response = MagicMock()
-    mock_response.choices = [
-        MagicMock(message=MagicMock(content="Paris"))
-    ]
+    mock_response.choices = [MagicMock(message=MagicMock(content="Paris"))]
     mock_response.usage = MagicMock(completion_tokens=5)
 
-    with patch.dict("os.environ", {"MISTRAL_API_KEY": "fake_test_key"}), \
-         patch("mistral_eval.engine.api_runner.Mistral") as mock_mistral_cls:
-
+    with (
+        patch.dict("os.environ", {"MISTRAL_API_KEY": "fake_test_key"}),
+        patch("mistral_eval.engine.api_runner.Mistral") as mock_mistral_cls,
+    ):
         mock_client = MagicMock()
         mock_client.chat.complete_async = AsyncMock(return_value=mock_response)
         mock_mistral_cls.return_value = mock_client

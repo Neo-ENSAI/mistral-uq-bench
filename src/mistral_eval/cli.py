@@ -1,13 +1,13 @@
 import asyncio
-import nest_asyncio
 import json
 import random
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
+import nest_asyncio
 import numpy as np
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -25,7 +25,6 @@ from mistral_eval.stats.conformal import (
 )
 from mistral_eval.stats.metrics import compute_ece
 from mistral_eval.stats.testing import CoverageMartingaleTester
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -34,7 +33,6 @@ app = typer.Typer(
 )
 console = Console()
 nest_asyncio.apply()
-
 
 
 class MockInferenceEngine:
@@ -46,7 +44,9 @@ class MockInferenceEngine:
         self.rng = random.Random(seed)
         self.accuracy = accuracy
 
-    async def generate_batch(self, prompts: List[Dict[str, str]]) -> List[InferenceResult]:
+    async def generate_batch(
+        self, prompts: list[dict[str, str]]
+    ) -> list[InferenceResult]:
         results = []
         for item in prompts:
             target = item.get("target", "A")
@@ -85,14 +85,16 @@ class MockInferenceEngine:
         return results
 
 
-def load_dataset_records(file_path: str) -> List[Dict]:
+def load_dataset_records(file_path: str) -> list[dict]:
     """
     Load JSONL dataset records
     """
 
     path = Path(file_path)
     if not path.exists():
-        console.print(f"[bold red]Error:[/bold red] Dataset file not found at: {file_path}")
+        console.print(
+            f"[bold red]Error:[/bold red] Dataset file not found at: {file_path}"
+        )
         raise typer.Exit(code=1)
     with open(path, "r", encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
@@ -103,16 +105,43 @@ def load_dataset_records(file_path: str) -> List[Dict]:
 # -----------------------------------------------------------------------------
 @app.command()
 def evaluate(
-    data_path: str = typer.Option("data/sample_eval.jsonl", "--data", "-d", help="Path to input JSONL dataset"),
-    engine: str = typer.Option("mock", "--engine", "-e", help="Inference backend: 'mock', 'api', or 'vllm'"),
-    model_name: str = typer.Option("mistral-small-latest", "--model", "-m", help="Mistral model identifier"),
-    method: str = typer.Option("lac", "--method", help="Conformal prediction algorithm: 'lac' or 'aps'"),
-    alpha: float = typer.Option(0.05, "--alpha", "-a", help="Nominal error rate (e.g., 0.05 for 95% target coverage)"),
-    alpha_alt: float = typer.Option(0.12, "--alpha-alt", help="Alternative error rate under H1 for sequential testing"),
-    delta: float = typer.Option(0.05, "--delta", help="Type-I error tolerance for Ville's inequality threshold (1/delta)"),
-    cal_ratio: float = typer.Option(0.5, "--cal-ratio", help="Proportion of the dataset allocated to calibration"),
+    data_path: str = typer.Option(
+        "data/sample_eval.jsonl", "--data", "-d", help="Path to input JSONL dataset"
+    ),
+    engine: str = typer.Option(
+        "mock", "--engine", "-e", help="Inference backend: 'mock', 'api', or 'vllm'"
+    ),
+    model_name: str = typer.Option(
+        "mistral-small-latest", "--model", "-m", help="Mistral model identifier"
+    ),
+    method: str = typer.Option(
+        "lac", "--method", help="Conformal prediction algorithm: 'lac' or 'aps'"
+    ),
+    alpha: float = typer.Option(
+        0.05,
+        "--alpha",
+        "-a",
+        help="Nominal error rate (e.g., 0.05 for 95% target coverage)",
+    ),
+    alpha_alt: float = typer.Option(
+        0.12,
+        "--alpha-alt",
+        help="Alternative error rate under H1 for sequential testing",
+    ),
+    delta: float = typer.Option(
+        0.05,
+        "--delta",
+        help="Type-I error tolerance for Ville's inequality threshold (1/delta)",
+    ),
+    cal_ratio: float = typer.Option(
+        0.5, "--cal-ratio", help="Proportion of the dataset allocated to calibration"
+    ),
     seed: int = typer.Option(42, "--seed", help="Random seed for reproducibility"),
-    report_path: str = typer.Option("reports/latest_benchmark.md", "--report", help="Destination path for Markdown CI report"),
+    report_path: str = typer.Option(
+        "reports/latest_benchmark.md",
+        "--report",
+        help="Destination path for Markdown CI report",
+    ),
 ):
     """
     Run the end-to-end conformal calibration and sequential non-regression evaluation pipeline
@@ -131,25 +160,37 @@ def evaluate(
     # Dataset loading and exchangeable split
     records = load_dataset_records(data_path)
     d_cal, d_test = split_calibration_test(records, cal_ratio=cal_ratio, seed=seed)
-    console.print(f"Dataset loaded: [bold]{len(d_cal)}[/bold] calibration samples | [bold]{len(d_test)}[/bold] evaluation samples")
+    console.print(
+        f"Dataset loaded: [bold]{len(d_cal)}[/bold] calibration samples | [bold]{len(d_test)}[/bold] evaluation samples"
+    )
 
     # Engine initialization
     if engine == "mock":
         runner = MockInferenceEngine(seed=seed)
     elif engine == "api":
         from mistral_eval.engine.api_runner import MistralAPIEngine
+
         runner = MistralAPIEngine(model_name=model_name)
     elif engine == "vllm":
         from mistral_eval.engine.vllm_runner import VLLMInferenceEngine
+
         runner = VLLMInferenceEngine(model_name=model_name)
     else:
-        console.print(f"[bold red]Error:[/bold red] Unsupported engine type '{engine}'.")
+        console.print(
+            f"[bold red]Error:[/bold red] Unsupported engine type '{engine}'."
+        )
         raise typer.Exit(code=1)
 
     tracer = LangfuseTracer()
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
-        t_cal = progress.add_task("[yellow]Running inference on calibration set (D_cal) ...", total=None)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        t_cal = progress.add_task(
+            "[yellow]Running inference on calibration set (D_cal) ...", total=None
+        )
         cal_results = asyncio.run(runner.generate_batch(d_cal))
         progress.update(t_cal, description="[green]Inference on D_cal completed")
 
@@ -157,10 +198,18 @@ def evaluate(
         cal_probs = [r.choice_probs for r in cal_results]
         cal_targets = [item["target"] for item in d_cal]
         q_hat = calibrator.fit(cal_probs, cal_targets)
-        console.print(f"Calibrated non-conformity threshold: [bold magenta]q_hat = {q_hat:.4f}[/bold magenta]")
+        console.print(
+            f"Calibrated non-conformity threshold: [bold magenta]q_hat = {q_hat:.4f}[/bold magenta]"
+        )
 
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=console) as progress:
-        t_test = progress.add_task("[yellow]Running inference on evaluation set (D_test)...", total=None)
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        t_test = progress.add_task(
+            "[yellow]Running inference on evaluation set (D_test)...", total=None
+        )
         test_results = asyncio.run(runner.generate_batch(d_test))
         progress.update(t_test, description="[green]Inference on D_test completed")
 
@@ -185,14 +234,18 @@ def evaluate(
     seq_result = martingale_tester.run_stream(is_covered_stream)
 
     stopped_at = seq_result.stopped_at_step
-    metrics = evaluate_conformal_sets(prediction_sets[:stopped_at], test_targets[:stopped_at])
+    metrics = evaluate_conformal_sets(
+        prediction_sets[:stopped_at], test_targets[:stopped_at]
+    )
 
     # Compute additional metrics: ECE and mean throughput
     confidences = np.array([max(p.values()) for p in test_probs[:stopped_at]])
-    accuracies = np.array([
-        1.0 if res.predicted_choice == target else 0.0
-        for res, target in zip(test_results[:stopped_at], test_targets[:stopped_at])
-    ])
+    accuracies = np.array(
+        [
+            1.0 if res.predicted_choice == target else 0.0
+            for res, target in zip(test_results[:stopped_at], test_targets[:stopped_at])
+        ]
+    )
     ece_val = compute_ece(confidences, accuracies, n_bins=10)
     mean_throughput = float(np.mean([r.throughput_tok_per_sec for r in test_results]))
 
@@ -215,25 +268,53 @@ def evaluate(
     )
 
     # Console Summary Dashboard
-    table = Table(title="Conformal Evaluation & Reliability Summary", border_style="cyan")
+    table = Table(
+        title="Conformal Evaluation & Reliability Summary", border_style="cyan"
+    )
     table.add_column("Evaluated Metric / Diagnostic", style="bold white")
     table.add_column("Observed Value", justify="right")
     table.add_column("Target / Bound", justify="right", style="dim")
 
     status_color = "red" if seq_result.regression_detected else "green"
-    status_text = "🚨 REGRESSION DETECTED" if seq_result.regression_detected else "✅ CONFORMAL"
+    status_text = (
+        "🚨 REGRESSION DETECTED" if seq_result.regression_detected else "✅ CONFORMAL"
+    )
 
-    table.add_row("Martingale Status (Ville)", f"[{status_color}]{status_text}[/{status_color}]", f"Threshold B = {seq_result.threshold:.1f}")
-    table.add_row("Stream Stopping Step", f"{stopped_at} / {len(d_test)} questions", "Max stream length")
-    table.add_row("Final Martingale Value (M_t)", f"{seq_result.final_martingale_value:.3e}", f"< {seq_result.threshold:.1f}")
+    table.add_row(
+        "Martingale Status (Ville)",
+        f"[{status_color}]{status_text}[/{status_color}]",
+        f"Threshold B = {seq_result.threshold:.1f}",
+    )
+    table.add_row(
+        "Stream Stopping Step",
+        f"{stopped_at} / {len(d_test)} questions",
+        "Max stream length",
+    )
+    table.add_row(
+        "Final Martingale Value (M_t)",
+        f"{seq_result.final_martingale_value:.3e}",
+        f"< {seq_result.threshold:.1f}",
+    )
     cov_color = "green" if metrics["empirical_coverage"] >= (1.0 - alpha) else "yellow"
-    table.add_row("Empirical Coverage", f"[{cov_color}]{metrics['empirical_coverage'] * 100:.2f}%[/{cov_color}]", f"≥ {(1.0 - alpha) * 100:.1f}%")
-    table.add_row("Mean Set Size |C(X)|", f"{metrics['mean_set_size']:.2f} choices", "≤ 2.20 (sharpness)")
-    table.add_row("Expected Calibration Error (ECE)", f"{ece_val:.4f}", "Lower is better")
+    table.add_row(
+        "Empirical Coverage",
+        f"[{cov_color}]{metrics['empirical_coverage'] * 100:.2f}%[/{cov_color}]",
+        f"≥ {(1.0 - alpha) * 100:.1f}%",
+    )
+    table.add_row(
+        "Mean Set Size |C(X)|",
+        f"{metrics['mean_set_size']:.2f} choices",
+        "≤ 2.20 (sharpness)",
+    )
+    table.add_row(
+        "Expected Calibration Error (ECE)", f"{ece_val:.4f}", "Lower is better"
+    )
     table.add_row("Mean Inference Throughput", f"{mean_throughput:.1f} tok/s", "-")
 
     console.print("\n", table)
-    console.print(f"📝 Markdown report saved to: [bold green]{report_path}[/bold green]\n")
+    console.print(
+        f"📝 Markdown report saved to: [bold green]{report_path}[/bold green]\n"
+    )
 
     # Exit if the reliability gate failed
     if not gate_report.passed:
@@ -245,7 +326,9 @@ def evaluate(
         )
         sys.exit(1)
     else:
-        console.print("[bold green]SUCCESS: All statistical and operational guarantees are satisfied[/bold green]\n")
+        console.print(
+            "[bold green]SUCCESS: All statistical and operational guarantees are satisfied[/bold green]\n"
+        )
 
 
 if __name__ == "__main__":

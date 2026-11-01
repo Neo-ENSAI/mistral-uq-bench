@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from mistral_eval.stats.metrics import compute_ece
 
 

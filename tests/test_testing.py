@@ -1,5 +1,5 @@
 import numpy as np
-import pytest
+
 from mistral_eval.stats.testing import CoverageMartingaleTester
 
 
@@ -23,7 +23,9 @@ def test_martingale_stays_bounded_under_nominal_coverage():
     )
 
     # Simulated under H0: the model is covered in 95% of cases (5% errors)
-    is_covered = (rng.binomial(n=1, p=1.0 - alpha_nominal, size=n_questions) == 1).tolist()
+    is_covered = (
+        rng.binomial(n=1, p=1.0 - alpha_nominal, size=n_questions) == 1
+    ).tolist()
 
     result = tester.run_stream(is_covered)
 
@@ -53,7 +55,9 @@ def test_martingale_detects_drift_and_stops_early():
     )
 
     # Simulated under H1: only 70% of questions are covered (30% errors)
-    is_covered_drift = (rng.binomial(n=1, p=1.0 - p_error_drift, size=200) == 1).tolist()
+    is_covered_drift = (
+        rng.binomial(n=1, p=1.0 - p_error_drift, size=200) == 1
+    ).tolist()
 
     result = tester.run_stream(is_covered_drift)
 

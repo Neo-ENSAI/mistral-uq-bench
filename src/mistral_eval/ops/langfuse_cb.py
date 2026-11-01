@@ -1,5 +1,5 @@
 import os
-from typing import List
+
 from mistral_eval.schemas import InferenceResult
 
 
@@ -15,12 +15,13 @@ class LangfuseTracer:
         self.client = None
         if self.enabled:
             from langfuse import get_client
+
             self.client = get_client()
 
     def log_evaluation_step(
         self,
         result: InferenceResult,
-        conformal_set: List[str],
+        conformal_set: list[str],
         target: str,
     ) -> None:
 
@@ -43,16 +44,17 @@ class LangfuseTracer:
                         "model": result.model_name,
                         "engine": result.engine_type,
                         "latency_ms": result.latency_ms,
-                    }
+                    },
                 )
 
                 obs.score(name="predictive_entropy", value=result.predictive_entropy)
                 obs.score(name="conformal_set_size", value=float(len(conformal_set)))
-                obs.score(name="is_covered", value=1.0 if target in conformal_set else 0.0)
+                obs.score(
+                    name="is_covered", value=1.0 if target in conformal_set else 0.0
+                )
 
         except Exception as e:
             print(f"Langfuse Error: {e}")
-            pass
 
     def flush(self) -> None:
         if self.enabled and self.client is not None:
