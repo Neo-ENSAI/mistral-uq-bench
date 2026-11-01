@@ -38,7 +38,9 @@ class VLLMInferenceEngine(BaseInferenceEngine):
             model=model_name,
             quantization=quantization,
             trust_remote_code=True,
-            gpu_memory_utilization=0.90,
+            gpu_memory_utilization=0.80,  
+            max_model_len=2048,
+            dtype="float16",
         )
 
     async def generate_batch(
