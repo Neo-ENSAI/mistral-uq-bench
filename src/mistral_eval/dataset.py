@@ -21,11 +21,11 @@ def format_mmlu_prompt(question: str, choices: list[str]) -> str:
 
 
 def build_mmlu_sample(
-    subjects: list[str] = [
+    subjects: tuple[str, ...] = (
         "college_mathematics",
         "high_school_statistics",
         "machine_learning",
-    ],
+    ),
     n_per_subject: int = 100,
     seed: int = 42,
     output_path: str = "data/sample_eval.jsonl",

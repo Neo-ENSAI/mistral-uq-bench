@@ -53,7 +53,7 @@ class LangfuseTracer:
                     name="is_covered", value=1.0 if target in conformal_set else 0.0
                 )
 
-        except Exception as e:
+        except Exception as e: # noqa: BLE001
             print(f"Langfuse Error: {e}")
 
     def flush(self) -> None:
