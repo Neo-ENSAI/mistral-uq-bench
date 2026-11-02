@@ -52,7 +52,6 @@ class MockInferenceEngine:
             target = item.get("target", "A")
             is_correct = self.rng.random() < self.accuracy
 
-            # Simulate probability distribution across {A, B, C, D}
             raw_scores = [self.rng.uniform(0.01, 0.15) for _ in CHOICES]
             target_idx = CHOICES.index(target)
 
@@ -86,10 +85,6 @@ class MockInferenceEngine:
 
 
 def load_dataset_records(file_path: str) -> list[dict]:
-    """
-    Load JSONL dataset records
-    """
-
     path = Path(file_path)
     if not path.exists():
         console.print(
@@ -100,9 +95,6 @@ def load_dataset_records(file_path: str) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-# -----------------------------------------------------------------------------
-# Main CLI Command
-# -----------------------------------------------------------------------------
 @app.command()
 def evaluate(
     data_path: str = typer.Option(
@@ -112,7 +104,10 @@ def evaluate(
         "mock", "--engine", "-e", help="Inference backend: 'mock', 'api', or 'vllm'"
     ),
     model_name: str = typer.Option(
-        "glm-5-2", "--model", "-m", help="Mistral model identifier"
+        "TheBloke/Mistral-7B-Instruct-v0.2-AWQ",
+        "--model",
+        "-m",
+        help="Mistral model identifier",
     ),
     quantization: str | None = typer.Option(
         None,
@@ -153,6 +148,9 @@ def evaluate(
     Run the end-to-end conformal calibration and sequential non-regression evaluation pipeline
     """
 
+    if engine == "vllm" and quantization is None and "awq" in model_name.lower():
+        quantization = "awq"
+
     console.print(
         Panel.fit(
             f"[bold cyan]MISTRAL-UQ-BENCH[/bold cyan]\n"
@@ -163,7 +161,7 @@ def evaluate(
         )
     )
 
-    # Dataset loading and exchangeable split
+    # Dataset loading
     records = load_dataset_records(data_path)
     d_cal, d_test = split_calibration_test(records, cal_ratio=cal_ratio, seed=seed)
     console.print(
@@ -236,7 +234,7 @@ def evaluate(
         tracer.log_evaluation_step(res, c_set, target)
     tracer.flush()
 
-    # Sequential martingale testing for non-regression detection
+    # Sequential martingale testing
     martingale_tester = CoverageMartingaleTester(
         alpha=alpha, alpha_alt=alpha_alt, type1_error_delta=delta
     )
@@ -258,7 +256,10 @@ def evaluate(
     ece_val = compute_ece(confidences, accuracies, n_bins=10)
     mean_throughput = float(np.mean([r.throughput_tok_per_sec for r in test_results]))
 
-    # Generate Markdown report for CI/CD pipelines
+
+    Path(report_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Generate Markdown report
     gate_report = evaluate_reliability_gate(
         empirical_coverage=metrics["empirical_coverage"],
         alpha=alpha,
@@ -325,7 +326,6 @@ def evaluate(
         f"📝 Markdown report saved to: [bold green]{report_path}[/bold green]\n"
     )
 
-    # Exit if the reliability gate failed
     if not gate_report.passed:
         console.print(
             Panel(
