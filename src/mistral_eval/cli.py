@@ -112,7 +112,13 @@ def evaluate(
         "mock", "--engine", "-e", help="Inference backend: 'mock', 'api', or 'vllm'"
     ),
     model_name: str = typer.Option(
-        "mistral-small-latest", "--model", "-m", help="Mistral model identifier"
+        "glm-5-2", "--model", "-m", help="Mistral model identifier"
+    ),
+    quantization: str | None = typer.Option(
+        None,
+        "--quantization",
+        "-q",
+        help="Quantization method for vLLM (e.g. 'awq')",
     ),
     method: str = typer.Option(
         "lac", "--method", help="Conformal prediction algorithm: 'lac' or 'aps'"
@@ -174,7 +180,10 @@ def evaluate(
     elif engine == "vllm":
         from mistral_eval.engine.vllm_runner import VLLMInferenceEngine
 
-        runner = VLLMInferenceEngine(model_name=model_name)
+        runner = VLLMInferenceEngine(
+            model_name=model_name,
+            quantization=quantization,
+        )
     else:
         console.print(
             f"[bold red]Error:[/bold red] Unsupported engine type '{engine}'."
