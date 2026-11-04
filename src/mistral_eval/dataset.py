@@ -70,3 +70,29 @@ def split_calibration_test(
     rng.shuffle(shuffled)
     n_cal = int(len(shuffled) * cal_ratio)
     return shuffled[:n_cal], shuffled[n_cal:]
+
+
+
+
+
+def build_easy_sample(
+    n_per_subject: int = 100,
+    seed: int = 42,
+    output_path: str = "data/sample_eval_easy.jsonl",
+) -> list[dict]:
+    """
+    Build an easy sample evaluation dataset from the MMLU benchmark.
+
+    Mirrors build_mmlu_sample structure (300 items, same prompt format,
+    same seed) so that dataset difficulty is the only variable.
+    """
+    return build_mmlu_sample(
+        subjects=(
+            "elementary_mathematics",
+            "high_school_computer_science",
+            "nutrition",
+        ),
+        n_per_subject=n_per_subject,
+        seed=seed,
+        output_path=output_path,
+    )
