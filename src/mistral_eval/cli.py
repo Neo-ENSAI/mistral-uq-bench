@@ -254,6 +254,10 @@ def evaluate(
         ]
     )
     ece_val = compute_ece(confidences, accuracies, n_bins=10)
+    accuracy = float(np.mean(accuracies))
+    sizes = [len(s) for s in prediction_sets[:stopped_at]]
+    size_when_correct = float(np.mean([s for s, a in zip(sizes, accuracies) if a == 1.0]))
+    size_when_wrong   = float(np.mean([s for s, a in zip(sizes, accuracies) if a == 0.0]))
     mean_throughput = float(np.mean([r.throughput_tok_per_sec for r in test_results]))
 
 
