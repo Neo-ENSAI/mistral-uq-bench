@@ -1,5 +1,8 @@
 import time
 
+from vllm import LLM, SamplingParams
+from transformers import AutoTokenizer
+
 from mistral_eval.engine.base import BaseInferenceEngine
 from mistral_eval.schemas import InferenceResult
 from mistral_eval.stats.metrics import (
@@ -22,16 +25,7 @@ class VLLMInferenceEngine(BaseInferenceEngine):
         top_logprobs: int = 20,
     ):
         super().__init__(model_name=model_name, temperature=temperature)
-        try:
-            from vllm import LLM, SamplingParams
-        except ImportError as exc:
-            raise RuntimeError(
-                "vLLM is not installed on  this device. Please install it with : uv pip install vllm."
-            ) from exc
-
-        from transformers import AutoTokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-
         self.sampling_params = SamplingParams(
             temperature=temperature,
             max_tokens=16,
@@ -57,7 +51,7 @@ class VLLMInferenceEngine(BaseInferenceEngine):
             )
             for p in prompts
         ]
-        
+
         t0 = time.perf_counter()
         outputs = self.llm.generate(raw_prompts, self.sampling_params)
         total_ms = (time.perf_counter() - t0) * 1000.0
