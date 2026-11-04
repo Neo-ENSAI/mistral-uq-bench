@@ -29,16 +29,19 @@ class VLLMInferenceEngine(BaseInferenceEngine):
                 "vLLM is not installed on  this device. Please install it with : uv pip install vllm."
             ) from exc
 
+        from transformers import AutoTokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+
         self.sampling_params = SamplingParams(
             temperature=temperature,
-            max_tokens=4,
+            max_tokens=16,
             logprobs=top_logprobs,
         )
         self.llm = LLM(
             model=model_name,
             quantization=quantization,
             trust_remote_code=True,
-            gpu_memory_utilization=0.80,  
+            gpu_memory_utilization=0.80,
             max_model_len=2048,
             dtype="float16",
         )
@@ -46,7 +49,15 @@ class VLLMInferenceEngine(BaseInferenceEngine):
     async def generate_batch(
         self, prompts: list[dict[str, str]]
     ) -> list[InferenceResult]:
-        raw_prompts = [p["prompt"] for p in prompts]
+        raw_prompts = [
+            self.tokenizer.apply_chat_template(
+                [{"role": "user", "content": p["prompt"]}],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            for p in prompts
+        ]
+        
         t0 = time.perf_counter()
         outputs = self.llm.generate(raw_prompts, self.sampling_params)
         total_ms = (time.perf_counter() - t0) * 1000.0
