@@ -147,6 +147,11 @@ def evaluate(
     None, "--sweep-alphas",
     help="Comma-separated alphas, e.g. '0.05,0.10,0.15,0.20' → writes coverage-size CSV",
     ),
+    mock_accuracy: float = typer.Option(
+        0.85,
+        "--mock-accuracy",
+        help="Simulated accuracy of the mock engine, in (0,1). Only used with --engine mock.",
+    ),
 ):
     """
     Run the end-to-end conformal calibration and sequential non-regression evaluation pipeline
@@ -174,7 +179,7 @@ def evaluate(
 
     # Engine initialization
     if engine == "mock":
-        runner = MockInferenceEngine(seed=seed)
+        runner = MockInferenceEngine(accuracy=mock_accuracy, seed=seed)
     elif engine == "api":
         from mistral_eval.engine.api_runner import MistralAPIEngine
 
@@ -242,6 +247,14 @@ def evaluate(
                 f.write(f"{a:.2f},{q:.4f},{m['empirical_coverage']:.4f},"
                         f"{m['mean_set_size']:.4f},{m['singleton_ratio']:.4f},{acc:.4f}\n")
         console.print(f"📊 Coverage-size sweep: [bold green]{csv_path}[/bold green]")
+
+    if engine == "mock":
+        if not (0.0 < mock_accuracy < 1.0):
+            console.print(
+                f"[bold red]Error:[/bold red] --mock-accuracy must be in (0,1), got {mock_accuracy}"
+            )
+            raise typer.Exit(code=1)
+        runner = MockInferenceEngine(accuracy=mock_accuracy, seed=seed)
 
     # Binary coverage stream for sequential martingale monitoring
     is_covered_stream = [
@@ -382,9 +395,9 @@ def evaluate(
                     f"[bold yellow]⚠️  SHARPNESS ALERT (measured, not failed):[/bold yellow] "
                     f"|C(X)| = {metrics['mean_set_size']:.2f} > 2.20 at "
                     f"{(1 - alpha) * 100:.0f}% coverage.\n"
-                    f"Model accuracy is {accuracy * 100:.1f}% — too low to permit sharp "
-                    f"sets on this dataset. The gap quantifies the reliability headroom "
-                    f"(a ~70%-accuracy, well-calibrated model would pass).",
+                    f"Accuracy is {accuracy * 100:.1f}% — sharp sets require BOTH high accuracy "
+                    f"AND humble errors. Confidently-wrong items on D_cal push q̂ to {q_hat:.2f}, "
+                    f"inflating every set. This gap is the measured reliability headroom.",
                     border_style="yellow",
                 )
             )
