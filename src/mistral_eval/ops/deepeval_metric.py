@@ -10,6 +10,9 @@ class ReliabilityGateReport:
     target_coverage: float
     mean_set_size: float
     ece: float
+    accuracy: float
+    size_when_correct: float
+    size_when_wrong: float
     martingale_triggered: bool
     reason: str
 
@@ -19,6 +22,9 @@ def evaluate_reliability_gate(
     alpha: float,
     mean_set_size: float,
     ece: float,
+    accuracy: float,
+    size_when_correct: float,
+    size_when_wrong: float,
     seq_result: SequentialTestResult,
     max_allowed_set_size: float = 2.2,
 ) -> ReliabilityGateReport:
@@ -34,6 +40,9 @@ def evaluate_reliability_gate(
             target_coverage=target_cov,
             mean_set_size=mean_set_size,
             ece=ece,
+            accuracy=accuracy,
+            size_when_correct=size_when_correct,
+            size_when_wrong=size_when_wrong,
             martingale_triggered=True,
             reason=f"Martingale alert at step {seq_result.stopped_at_step} (M_t={seq_result.final_martingale_value:.2f} >= {seq_result.threshold:.1f}).",
         )
@@ -45,6 +54,9 @@ def evaluate_reliability_gate(
             target_coverage=target_cov,
             mean_set_size=mean_set_size,
             ece=ece,
+            accuracy=accuracy,
+            size_when_correct=size_when_correct,
+            size_when_wrong=size_when_wrong,
             martingale_triggered=False,
             reason=f"Conformal sets too large ({mean_set_size:.2f} > {max_allowed_set_size}).",
         )
@@ -55,6 +67,9 @@ def evaluate_reliability_gate(
         target_coverage=target_cov,
         mean_set_size=mean_set_size,
         ece=ece,
+        accuracy=accuracy,
+        size_when_correct=size_when_correct,
+        size_when_wrong=size_when_wrong,
         martingale_triggered=False,
         reason="Conformal guarantees and sequential test validated successfully",
     )

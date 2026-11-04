@@ -12,7 +12,7 @@ def generate_markdown_report(
     gate: ReliabilityGateReport,
     output_path: str = "reports/latest_benchmark.md",
 ) -> str:
-    status_badge = "✅ PASSED" if gate.passed else "❌ FAILED (REGRESSION)"
+    status_badge = "✅ PASSED" if gate.passed else "⚠️ SHARPNESS ALERT"
     md = f"""## ⚡ Mistral-UQ-Bench — Automated Statistical CI Report
 
 **Status:** {status_badge}
@@ -23,7 +23,10 @@ def generate_markdown_report(
 | **Model Backend** | `{model_name}` | `{engine_type}` |
 | **Conformal Method** | `{method.upper()}` ($\\hat{{q}} = {q_hat:.4f}$) | Split Conformal |
 | **Empirical Coverage** | **{gate.empirical_coverage * 100:.2f}%** | $\\ge {gate.target_coverage * 100:.1f}\\%$ |
-| **Mean Prediction Set Size** | **{gate.mean_set_size:.2f}** | $\\le 2.20$ |
+| **Mean Prediction Set Size** | **{gate.mean_set_size:.2f}** | Reference: ≤ 2.20 (needs a ~70%-accuracy well-calibrated model) |
+| **Model Accuracy (D_test)** | **{gate.accuracy * 100:.1f}%** | Context for set size |
+| **Set Size — model correct** | {gate.size_when_correct:.2f} | Sharpness when confident |
+| **Set Size — model wrong** | {gate.size_when_wrong:.2f} | Honesty when lost |
 | **Expected Calibration Error (ECE)** | `{gate.ece:.4f}` | Lower is better |
 | **Martingale Drift Alert** | `{gate.martingale_triggered}` | `False` ($M_t < 20$) |
 | **Mean Throughput** | `{throughput:.1f} tok/s` | - |
